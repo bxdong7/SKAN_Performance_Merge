@@ -19,7 +19,7 @@ class Environment(Enum):
   DEVELOPMENT = 1
   PRODUCTION = 2
 
-ENVIRONMENT = Environment.DEVELOPMENT
+ENVIRONMENT = Environment.PRODUCTION
 
 # COMMAND ----------
 
@@ -606,7 +606,6 @@ class PredictionError(Exception):
 
 def get_old_channel_details_df() -> ps.DataFrame:
   sql = f"select * from {CAMPAIGN_TABLE_NAME}"
-  sql = "select * from ua.skan_performance_channel_ltv"  # only for the first time
   df = spark.sql(sql)
   return df
   
@@ -641,7 +640,7 @@ def qa_result(old_channel_details_df: ps.DataFrame, new_channel_details_df: ps.D
 
 if ENVIRONMENT == Environment.DEVELOPMENT:
   old_channel_details_df = get_old_channel_details_df()
-  # qa_result(old_channel_details_df, channel_details_df)
+  qa_result(old_channel_details_df, channel_details_df)
 
 # COMMAND ----------
 
@@ -655,10 +654,6 @@ def save_result(campaign_details_df: ps.DataFrame, channel_details_df: ps.DataFr
   campaign_details_df.write.mode('overwrite').partitionBy('APPLICATION_FAMILY_NAME').saveAsTable(CAMPAIGN_TABLE_NAME)
   channel_details_df.write.format('parquet').mode('overwrite').partitionBy('APPLICATION_FAMILY_NAME').save(CHANNEL_PARQUET_PATH)
   channel_details_df.write.mode('overwrite').partitionBy('APPLICATION_FAMILY_NAME').saveAsTable(CHANNEL_TABLE_NAME)
-
-# COMMAND ----------
-
-save_result(campaign_details_df, channel_details_df)
 
 # COMMAND ----------
 
@@ -684,7 +679,7 @@ def merge_skan_performance_channel_details():
   
   # qa
   old_channel_details_df = get_old_channel_details_df()
-  # qa_result(old_channel_details_df, channel_details_df)
+  qa_result(old_channel_details_df, channel_details_df)
   
   # save result
   if SAVE_FLAG:
@@ -697,3 +692,7 @@ def merge_skan_performance_channel_details():
 if ENVIRONMENT == Environment.PRODUCTION:
   campaign_details_df, channel_details_df = merge_skan_performance_channel_details()
   display(channel_details_df)
+
+# COMMAND ----------
+
+
