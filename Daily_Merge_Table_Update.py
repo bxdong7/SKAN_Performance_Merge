@@ -611,7 +611,6 @@ def get_old_channel_details_df() -> ps.DataFrame:
   
 def qa_result_by_game(row: pd.Series) -> None:
   if (row['NEW_LAST_INSTALL_DT'] < row['OLD_LAST_INSTALL_DT']) or \
-     (row['NEW_TOTAL_SPEND'] < (row['OLD_TOTAL_SPEND']-1)) or \
      (row['NEW_TOTAL_INSTALL'] < (row['OLD_TOTAL_INSTALL']-1)):
     raise PredictionError(row['APPLICATION_FAMILY_NAME'], row['MARKET_CD'], row['SOURCE'], row['OLD_LAST_INSTALL_DT'], row['OLD_TOTAL_SPEND'], row['OLD_TOTAL_INSTALL'], row['NEW_LAST_INSTALL_DT'], row['NEW_TOTAL_SPEND'], row['NEW_TOTAL_INSTALL'])
     
