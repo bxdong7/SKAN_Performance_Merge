@@ -648,9 +648,21 @@ if ENVIRONMENT == Environment.DEVELOPMENT:
 
 # COMMAND ----------
 
+def revise_schema(df: ps.DataFrame) -> ps.DataFrame:
+  """
+  Change certain column names to lower case
+  """
+  columns = ['APPLICATION_FAMILY_NAME', 'MARKET_CD', 'CHANNEL_NAME', 'USER_SOURCE_TYPE_CD', 'PROMOTION_NAME', 'CALENDAR_DT', 'SOURCE', 'INSTALL', 'SPEND']
+  for column in columns:
+    df = df.withColumnRenamed(column, column.lower())
+  return df
+
 def save_result(campaign_details_df: ps.DataFrame, channel_details_df: ps.DataFrame) -> None:
+  campaign_details_df = revise_schema(campaign_details_df)
   campaign_details_df.write.format('parquet').mode('overwrite').partitionBy('APPLICATION_FAMILY_NAME').save(CAMPAIGN_PARQUET_PATH)
   campaign_details_df.write.mode('overwrite').partitionBy('APPLICATION_FAMILY_NAME').saveAsTable(CAMPAIGN_TABLE_NAME)
+  
+  channel_details_df = revise_schema(channel_details_df)
   channel_details_df.write.format('parquet').mode('overwrite').partitionBy('APPLICATION_FAMILY_NAME').save(CHANNEL_PARQUET_PATH)
   channel_details_df.write.mode('overwrite').partitionBy('APPLICATION_FAMILY_NAME').saveAsTable(CHANNEL_TABLE_NAME)
 
