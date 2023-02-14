@@ -706,4 +706,23 @@ if ENVIRONMENT == Environment.PRODUCTION:
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC select *
+# MAGIC from ua.skan_performance_campaign_ltv
 
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select 
+# MAGIC   application_family_name, 
+# MAGIC   market_cd,
+# MAGIC   channel_name,
+# MAGIC   source,
+# MAGIC   user_source_type_cd,
+# MAGIC   calendar_dt,
+# MAGIC   sum(install),
+# MAGIC   sum(spend)
+# MAGIC from ua.skan_performance_campaign_ltv
+# MAGIC where application_family_name = 'Harry Potter' and calendar_dt >= '2023-02-01'
+# MAGIC group by 1, 2, 3, 4, 5, 6
+# MAGIC order by 1, 2, 3, 4, 5, 6
