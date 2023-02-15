@@ -36,7 +36,7 @@ today = date.today()
 REPORT_DELAY_DAYS = 3
 START_DT = '2021-01-01'
 END_DT = datetime.strftime(today - timedelta(days=REPORT_DELAY_DAYS), DATE_FORMAT)
-GAME_LIST = ['Cookie Jam','Cookie Jam Blast','Bingo Pop','Emoji Blitz','Harry Potter','Jurassic World Alive','Jurassic World the Game','Lovelink','Genies and Gems','Panda Pop','Mahjong','Solitaire Showtime']
+GAME_LIST = ['Cookie Jam','Cookie Jam Blast','Bingo Pop','Emoji Blitz','Harry Potter','Jurassic World Alive','Jurassic World the Game','Lovelink','Genies and Gems','Panda Pop','Mahjong','Solitaire Showtime','DC Heroes & Villains']
 LUDIA_TITLES = ['Jurassic World Alive', 'Lovelink', 'Jurassic World the Game']
 MARKET_LIST = ['IT', 'GO']
 FACT_PROMO_FILTER_COND = "CHANNEL_NAME not like '%UNTRUSTED%'" # may also include PROMOTION_NAME not like 'RT_%' and PROMOTION_NAME not like 'XP_%'
@@ -122,6 +122,7 @@ select
       case 
          when APPLICATION_FAMILY_NAME = 'Harry Potter' then REVS_DAY_001_AMT*0.616
          when APPLICATION_FAMILY_NAME = 'Jurassic World the Game' then REVS_DAY_001_AMT*0.525
+         when APPLICATION_FAMILY_NAME = 'DC Heroes & Villains' then REVS_DAY_001_AMT*0.546
          else REVS_DAY_001_AMT*0.7 
       end
   ) as IAP_REVS_DAY_001_AMT,
@@ -129,7 +130,8 @@ select
       case 
          when APPLICATION_FAMILY_NAME = 'Harry Potter' then AD_REVS_DAY_001_AMT*0.88
          when APPLICATION_FAMILY_NAME = 'Jurassic World the Game' then AD_REVS_DAY_001_AMT*0.75
-         else AD_REVS_DAY_001_AMT*0.
+         when APPLICATION_FAMILY_NAME = 'DC Heroes & Villains' then AD_REVS_DAY_001_AMT*0.78
+         else AD_REVS_DAY_001_AMT
       end
   ) as AD_REVS_DAY_001_AMT,
   sum(
@@ -151,6 +153,7 @@ select
       case 
          when APPLICATION_FAMILY_NAME = 'Harry Potter' then REVS_DAY_003_AMT*0.616
          when APPLICATION_FAMILY_NAME = 'Jurassic World the Game' then REVS_DAY_003_AMT*0.525
+         when APPLICATION_FAMILY_NAME = 'DC Heroes & Villains' then REVS_DAY_003_AMT*0.546
          else REVS_DAY_003_AMT*0.7 
       end
   ) as IAP_REVS_DAY_003_AMT,
@@ -158,7 +161,8 @@ select
       case 
          when APPLICATION_FAMILY_NAME = 'Harry Potter' then AD_REVS_DAY_003_AMT*0.88
          when APPLICATION_FAMILY_NAME = 'Jurassic World the Game' then AD_REVS_DAY_003_AMT*0.75
-         else AD_REVS_DAY_003_AMT*0.
+         when APPLICATION_FAMILY_NAME = 'DC Heroes & Villains' then AD_REVS_DAY_003_AMT*0.78
+         else AD_REVS_DAY_003_AMT
       end
   ) as AD_REVS_DAY_003_AMT,
   sum(
@@ -180,6 +184,7 @@ select
       case 
          when APPLICATION_FAMILY_NAME = 'Harry Potter' then REVS_DAY_007_AMT*0.616
          when APPLICATION_FAMILY_NAME = 'Jurassic World the Game' then REVS_DAY_007_AMT*0.525
+         when APPLICATION_FAMILY_NAME = 'DC Heroes & Villains' then REVS_DAY_007_AMT*0.546
          else REVS_DAY_007_AMT*0.7 
       end
   ) as IAP_REVS_DAY_007_AMT,
@@ -187,7 +192,8 @@ select
       case 
          when APPLICATION_FAMILY_NAME = 'Harry Potter' then AD_REVS_DAY_007_AMT*0.88
          when APPLICATION_FAMILY_NAME = 'Jurassic World the Game' then AD_REVS_DAY_007_AMT*0.75
-         else AD_REVS_DAY_007_AMT*0.
+         when APPLICATION_FAMILY_NAME = 'DC Heroes & Villains' then AD_REVS_DAY_007_AMT*0.78
+         else AD_REVS_DAY_007_AMT
       end
   ) as AD_REVS_DAY_007_AMT,
   sum(
@@ -209,6 +215,7 @@ select
       case 
          when APPLICATION_FAMILY_NAME = 'Harry Potter' then REVS_DAY_014_AMT*0.616
          when APPLICATION_FAMILY_NAME = 'Jurassic World the Game' then REVS_DAY_014_AMT*0.525
+         when APPLICATION_FAMILY_NAME = 'DC Heroes & Villains' then REVS_DAY_001_AMT*0.546
          else REVS_DAY_014_AMT*0.7 
       end
   ) as IAP_REVS_DAY_014_AMT,
@@ -216,7 +223,8 @@ select
       case 
          when APPLICATION_FAMILY_NAME = 'Harry Potter' then AD_REVS_DAY_014_AMT*0.88
          when APPLICATION_FAMILY_NAME = 'Jurassic World the Game' then AD_REVS_DAY_014_AMT*0.75
-         else AD_REVS_DAY_014_AMT*0.
+         when APPLICATION_FAMILY_NAME = 'DC Heroes & Villains' then AD_REVS_DAY_014_AMT*0.78
+         else AD_REVS_DAY_014_AMT
       end
   ) as AD_REVS_DAY_014_AMT,
   sum(
@@ -238,6 +246,7 @@ select
       case 
          when APPLICATION_FAMILY_NAME = 'Harry Potter' then REVS_DAY_028_AMT*0.616
          when APPLICATION_FAMILY_NAME = 'Jurassic World the Game' then REVS_DAY_028_AMT*0.525
+         when APPLICATION_FAMILY_NAME = 'DC Heroes & Villains' then REVS_DAY_001_AMT*0.546
          else REVS_DAY_028_AMT*0.7 
       end
   ) as IAP_REVS_DAY_028_AMT,
@@ -245,7 +254,8 @@ select
       case 
          when APPLICATION_FAMILY_NAME = 'Harry Potter' then AD_REVS_DAY_028_AMT*0.88
          when APPLICATION_FAMILY_NAME = 'Jurassic World the Game' then AD_REVS_DAY_028_AMT*0.75
-         else AD_REVS_DAY_028_AMT*0.
+         when APPLICATION_FAMILY_NAME = 'DC Heroes & Villains' then AD_REVS_DAY_028_AMT*0.78
+         else AD_REVS_DAY_028_AMT
       end
   ) as AD_REVS_DAY_028_AMT,
   sum(
@@ -267,6 +277,7 @@ select
       case 
          when APPLICATION_FAMILY_NAME = 'Harry Potter' then LTV_365_LASTEST_VAL*0.616
          when APPLICATION_FAMILY_NAME = 'Jurassic World the Game' then LTV_365_LASTEST_VAL*0.525
+         when APPLICATION_FAMILY_NAME = 'DC Heroes & Villains' then LTV_365_LASTEST_VAL*0.546
          else LTV_365_LASTEST_VAL*0.7 
       end
   ) as IAP_LTV,
@@ -274,6 +285,7 @@ select
       case 
         when APPLICATION_FAMILY_NAME = 'Harry Potter' then AD_LTV_365_LASTEST_VAL*0.88
         when APPLICATION_FAMILY_NAME = 'Jurassic World the Game' then AD_LTV_365_LASTEST_VAL*0.75
+        when APPLICATION_FAMILY_NAME = 'DC Heroes & Villains' then AD_LTV_365_LASTEST_VAL*0.78
         else AD_LTV_365_LASTEST_VAL 
       end
   ) as AD_LTV
@@ -450,6 +462,7 @@ def get_skan_campaign_ltv() -> ps.DataFrame:
       case 
          when APPLICATION_FAMILY_NAME = 'Harry Potter' then LTV_365_LATEST_VAL*0.616
          when APPLICATION_FAMILY_NAME = 'Jurassic World the Game' then LTV_365_LATEST_VAL*0.525
+         when APPLICATION_FAMILY_NAME = 'DC Heroes & Villains' then LTV_365_LATEST_VAL*0.546
          else LTV_365_LATEST_VAL*0.7 
       end
     ) as IAP_LTV,
