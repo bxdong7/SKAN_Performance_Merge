@@ -16,8 +16,9 @@ from datetime import datetime, date, timedelta
 # COMMAND ----------
 
 class Environment(Enum):
-  DEVELOPMENT = 1
-  PRODUCTION = 2
+    DEVELOPMENT = 1
+    PRODUCTION = 2
+
 
 ENVIRONMENT = Environment.PRODUCTION
 
@@ -30,23 +31,43 @@ ENVIRONMENT = Environment.PRODUCTION
 
 SAVE_FLAG = True
 
-DATE_FORMAT = '%Y-%m-%d'
+DATE_FORMAT = "%Y-%m-%d"
 
 today = date.today()
 REPORT_DELAY_DAYS = 3
-START_DT = '2021-01-01'
+START_DT = "2021-01-01"
 END_DT = datetime.strftime(today - timedelta(days=REPORT_DELAY_DAYS), DATE_FORMAT)
-GAME_LIST = ['Cookie Jam','Cookie Jam Blast','Bingo Pop','Emoji Blitz','Harry Potter','Jurassic World Alive','Jurassic World the Game','Lovelink','Genies and Gems','Panda Pop','Mahjong','Solitaire Showtime','DC Heroes & Villains']
-LUDIA_TITLES = ['Jurassic World Alive', 'Lovelink', 'Jurassic World the Game']
-MARKET_LIST = ['IT', 'GO']
-FACT_PROMO_FILTER_COND = "CHANNEL_NAME not like '%UNTRUSTED%'" # may also include PROMOTION_NAME not like 'RT_%' and PROMOTION_NAME not like 'XP_%'
+GAME_LIST = [
+    "Cookie Jam",
+    "Cookie Jam Blast",
+    "Bingo Pop",
+    "Emoji Blitz",
+    "Harry Potter",
+    "Jurassic World Alive",
+    "Jurassic World the Game",
+    "Lovelink",
+    "Genies and Gems",
+    "Panda Pop",
+    "Mahjong",
+    "Solitaire Showtime",
+    "DC Heroes & Villains",
+]
+LUDIA_TITLES = ["Jurassic World Alive", "Lovelink", "Jurassic World the Game"]
+MARKET_LIST = ["IT", "GO"]
+FACT_PROMO_FILTER_COND = "CHANNEL_NAME not like '%UNTRUSTED%'"  # may also include PROMOTION_NAME not like 'RT_%' and PROMOTION_NAME not like 'XP_%'
 SKAN_FILTER_COND = "CHANNEL_NAME not like '%UNTRUSTED%'"
 
 CHANNEL_TABLE_NAME = "ua.skan_performance_channel_ltv"
 CAMPAIGN_TABLE_NAME = "ua.skan_performance_campaign_ltv"
-DBFS_SAVE_DIR = '/mnt/jc-analytics-databricks-work/home/dongb/UA/SKAN/SKAN_Performance_Merge_PLTV'
-CHANNEL_PARQUET_PATH = str(Path(DBFS_SAVE_DIR, f"channel_{datetime.strftime(today, DATE_FORMAT)}.parquet"))
-CAMPAIGN_PARQUET_PATH = str(Path(DBFS_SAVE_DIR, f"campaign_{datetime.strftime(today, DATE_FORMAT)}.parquet"))
+DBFS_SAVE_DIR = (
+    "/mnt/jc-analytics-databricks-work/home/dongb/UA/SKAN/SKAN_Performance_Merge_PLTV"
+)
+CHANNEL_PARQUET_PATH = str(
+    Path(DBFS_SAVE_DIR, f"channel_{datetime.strftime(today, DATE_FORMAT)}.parquet")
+)
+CAMPAIGN_PARQUET_PATH = str(
+    Path(DBFS_SAVE_DIR, f"campaign_{datetime.strftime(today, DATE_FORMAT)}.parquet")
+)
 
 # COMMAND ----------
 
@@ -56,10 +77,10 @@ CAMPAIGN_PARQUET_PATH = str(Path(DBFS_SAVE_DIR, f"campaign_{datetime.strftime(to
 # COMMAND ----------
 
 def get_campaign_without_sub_ltv() -> ps.DataFrame:
-  """
-  Return a dataframe with campaign-level daily spend, install, rev, retention and ltv
-  """
-  sql = f"""
+    """
+    Return a dataframe with campaign-level daily spend, install, rev, retention and ltv
+    """
+    sql = f"""
 with pr_promo_tb as (
   select
     APPLICATION_FAMILY_NAME,
@@ -297,14 +318,14 @@ order by 1, 2, 3, 4, 5, 6
 select *
 from without_total_pltv
   """
-  df = spark.sql(sql)
-  return df
+    df = spark.sql(sql)
+    return df
 
 # COMMAND ----------
 
 if ENVIRONMENT == Environment.DEVELOPMENT:
-  campaign_without_sub_pltv_df = get_campaign_without_sub_ltv()
-  display(campaign_without_sub_pltv_df)
+    campaign_without_sub_pltv_df = get_campaign_without_sub_ltv()
+    display(campaign_without_sub_pltv_df)
 
 # COMMAND ----------
 
@@ -314,10 +335,10 @@ if ENVIRONMENT == Environment.DEVELOPMENT:
 # COMMAND ----------
 
 def get_campaign_sub_ltv() -> ps.DataFrame:
-  """
-  Return a dataframe with campaign-level daily sub pltv
-  """
-  sql = f"""
+    """
+    Return a dataframe with campaign-level daily sub pltv
+    """
+    sql = f"""
 with indi_max_project_dt as (
   select
     ACCOUNT_ID, 
@@ -383,14 +404,14 @@ where APPLICATION_FAMILY_NAME in {tuple(GAME_LIST)} and MARKET_CD in {tuple(MARK
 group by 1, 2, 3, 4, 5, 6
 order by 1, 2, 3, 4, 5, 6
   """
-  df = spark.sql(sql)
-  return df
+    df = spark.sql(sql)
+    return df
 
 # COMMAND ----------
 
 if ENVIRONMENT == Environment.DEVELOPMENT:
-  campaign_sub_pltv_df = get_campaign_sub_ltv()
-  display(campaign_sub_pltv_df)
+    campaign_sub_pltv_df = get_campaign_sub_ltv()
+    display(campaign_sub_pltv_df)
 
 # COMMAND ----------
 
@@ -399,26 +420,41 @@ if ENVIRONMENT == Environment.DEVELOPMENT:
 
 # COMMAND ----------
 
-def get_campaign_details(campaign_without_sub_pltv_df: ps.DataFrame, campaign_sub_pltv_df: ps.DataFrame) -> ps.DataFrame:
-  """
-  Merge campaign_without_sub_pltv_df and campaign_sub_pltv_df to get campaign details. 
-  """
-  df = campaign_without_sub_pltv_df.join(campaign_sub_pltv_df, on=['APPLICATION_FAMILY_NAME', 'MARKET_CD', 'USER_SOURCE_TYPE_CD', 'CHANNEL_NAME', 'PROMOTION_NAME', 'CALENDAR_DT'], how='left')
-  df = df.na.fill(0, subset=['INDIVIDUAL_INSTALLS', 'SUB_LTV'])
-  # ludia_df = df.where(F.col('APPLICATION_FAMILY_NAME').isin(LUDIA_TITLES))
-  # jc_df = df.where(~F.col('APPLICATION_FAMILY_NAME').isin(LUDIA_TITLES))
-  # ludia_df = ludia_df.withColumn('TOTAL_LTV', (F.sum('IAP_LTV') + F.sum('AD_LTV') + F.sum('SUB_LTV')))
-  # jc_df = jc_df.withColumn('TOTAL_LTV', (F.sum('IAP_LTV') + F.sum('AD_LTV')))
-  # df = ludia_df.unionByName(jc_df)
-  df = df.withColumn('TOTAL_LTV', F.expr('IAP_LTV + AD_LTV + SUB_LTV'))
-  df = df.drop('INDIVIDUAL_INSTALLS')
-  return df
+def get_campaign_details(
+    campaign_without_sub_pltv_df: ps.DataFrame, campaign_sub_pltv_df: ps.DataFrame
+) -> ps.DataFrame:
+    """
+    Merge campaign_without_sub_pltv_df and campaign_sub_pltv_df to get campaign details.
+    """
+    df = campaign_without_sub_pltv_df.join(
+        campaign_sub_pltv_df,
+        on=[
+            "APPLICATION_FAMILY_NAME",
+            "MARKET_CD",
+            "USER_SOURCE_TYPE_CD",
+            "CHANNEL_NAME",
+            "PROMOTION_NAME",
+            "CALENDAR_DT",
+        ],
+        how="left",
+    )
+    df = df.na.fill(0, subset=["INDIVIDUAL_INSTALLS", "SUB_LTV"])
+    # ludia_df = df.where(F.col('APPLICATION_FAMILY_NAME').isin(LUDIA_TITLES))
+    # jc_df = df.where(~F.col('APPLICATION_FAMILY_NAME').isin(LUDIA_TITLES))
+    # ludia_df = ludia_df.withColumn('TOTAL_LTV', (F.sum('IAP_LTV') + F.sum('AD_LTV') + F.sum('SUB_LTV')))
+    # jc_df = jc_df.withColumn('TOTAL_LTV', (F.sum('IAP_LTV') + F.sum('AD_LTV')))
+    # df = ludia_df.unionByName(jc_df)
+    df = df.withColumn("TOTAL_LTV", F.expr("IAP_LTV + AD_LTV + SUB_LTV"))
+    df = df.drop("INDIVIDUAL_INSTALLS")
+    return df
 
 # COMMAND ----------
 
 if ENVIRONMENT == Environment.DEVELOPMENT:
-  campaign_details_df = get_campaign_details(campaign_without_sub_pltv_df, campaign_sub_pltv_df)
-  display(campaign_details_df)
+    campaign_details_df = get_campaign_details(
+        campaign_without_sub_pltv_df, campaign_sub_pltv_df
+    )
+    display(campaign_details_df)
 
 # COMMAND ----------
 
@@ -428,10 +464,10 @@ if ENVIRONMENT == Environment.DEVELOPMENT:
 # COMMAND ----------
 
 def get_skan_campaign_ltv() -> ps.DataFrame:
-  """
-  Get SKAN campaign level pLTV
-  """
-  sql = f"""
+    """
+    Get SKAN campaign level pLTV
+    """
+    sql = f"""
   select
     APPLICATION_FAMILY_NAME,
     'IT' as MARKET_CD,
@@ -489,14 +525,14 @@ def get_skan_campaign_ltv() -> ps.DataFrame:
   group by 1, 2, 3, 4, 5, 6
   order by 1, 2, 3, 4, 5, 6
   """
-  df = spark.sql(sql)
-  return df
+    df = spark.sql(sql)
+    return df
 
 # COMMAND ----------
 
 if ENVIRONMENT == Environment.DEVELOPMENT:
-  skan_campaign_ltv_df = get_skan_campaign_ltv()
-  display(skan_campaign_ltv_df)
+    skan_campaign_ltv_df = get_skan_campaign_ltv()
+    display(skan_campaign_ltv_df)
 
 # COMMAND ----------
 
@@ -505,28 +541,166 @@ if ENVIRONMENT == Environment.DEVELOPMENT:
 
 # COMMAND ----------
 
-def get_complete_campaign_details(campaign_details_df: ps.DataFrame, skan_campaign_ltv_df: ps.DataFrame) -> ps.DataFrame:
-  """
-  For SKAN campaigns, use SKAN LTV and general spend; For non-SKAN campaigns, use general details. Join on APPLICATION_FAMILY_NAME, MARKET_CD, CHANNEL_NAME, PROMOTION_NAME, CALENDAR_DT
-  """
-  # get skan campaign details
-  campaign_spend_df = campaign_details_df.select('APPLICATION_FAMILY_NAME', 'MARKET_CD', 'USER_SOURCE_TYPE_CD', 'CHANNEL_NAME', 'PROMOTION_NAME', 'CALENDAR_DT', 'SPEND')
-  skan_campaign_details_df = skan_campaign_ltv_df.join(campaign_spend_df, on=['APPLICATION_FAMILY_NAME', 'MARKET_CD', 'CHANNEL_NAME', 'PROMOTION_NAME', 'CALENDAR_DT'], how='left')
-  skan_campaign_details_df = skan_campaign_details_df.na.fill({'USER_SOURCE_TYPE_CD': 'MK', 'SPEND': 0})
-  
-  # get non-skan campaign details 
-  other_campaign_details_df = campaign_details_df.join(skan_campaign_details_df, on=['APPLICATION_FAMILY_NAME', 'MARKET_CD', 'CHANNEL_NAME', 'PROMOTION_NAME', 'CALENDAR_DT'], how='leftanti')
-  other_campaign_details_df = other_campaign_details_df.withColumn('SOURCE', F.lit('Non-SKAN'))
-  
-  campaign_details_df = skan_campaign_details_df.unionByName(other_campaign_details_df)
-  campaign_details_df = campaign_details_df.withColumnRenamed('INSTALL_NUM', 'INSTALL')
-  return campaign_details_df
+def adjust_ios_organic(
+    mmp_campaign_details_df: ps.DataFrame,
+    skan_campaign_details_df: ps.DataFrame,
+    other_campaign_details_df: ps.DataFrame,
+) -> ps.DataFrame:
+    """
+    Combine skan_campaign_details_df and other_campaign_details_df into campaign_details df, and also adjust iOS organic (user_source_type_cd = US) = MMP_Total - SKAN_Total - MMP_Paid
+
+    Args:
+        mmp_campaign_details_df: returned by get_campaign_details(), include mmp details
+        skan_campaign_details_df: left join between skan_campaign_ltv_df and mmp_campaign_details_df
+        other_campaign_details_df: left-anti join between skan_campaign_ltv_df and mmp_campaign_details_df
+
+    Returns:
+        campaign_details_df: with SKAN, MMP and adjusted iOS organic
+    """
+    # calculate mmp_ios_total by day (US and MK)
+    go_campaign_details_df = mmp_campaign_details_df.where(F.col("MARKET_CD") == "GO")
+    mmp_ios_campaign_df = mmp_campaign_details_df.where(F.col("MARKET_CD") == "IT")
+    group_cols = ["APPLICATION_FAMILY_NAME", "MARKET_CD", "CALENDAR_DT"]
+    agg_cols = list(
+        set(mmp_campaign_details_df.columns)
+        - {
+            "APPLICATION_FAMILY_NAME",
+            "MARKET_CD",
+            "USER_SOURCE_TYPE_CD",
+            "CHANNEL_NAME",
+            "PROMOTION_NAME",
+            "CALENDAR_DT",
+        }
+    )
+    mmp_ios_total_df = (
+        mmp_ios_campaign_df.where(F.col("USER_SOURCE_TYPE_CD").isin(["MK", "US"]))
+        .groupby(group_cols)
+        .agg(*[F.sum(agg_col).alias("MMP_TOTAL_" + agg_col) for agg_col in agg_cols])
+    )
+    mmp_ios_paid_df = (
+        other_campaign_details_df.where(
+            (F.col("MARKET_CD") == "IT") & (F.col("USER_SOURCE_TYPE_CD") == "MK")
+        )
+        .groupby(group_cols)
+        .agg(*[F.sum(agg_col).alias("MMP_PAID_" + agg_col) for agg_col in agg_cols])
+    )
+    skan_total_df = skan_campaign_details_df.groupby(group_cols).agg(
+        *[F.sum(agg_col).alias("SKAN_PAID_" + agg_col) for agg_col in agg_cols]
+    )
+
+    # adjust mmp_ios_organic = mmp_ios_total - mmp_ios_paid_total - skan_ios_paid_total
+    mmp_ios_organic_df = mmp_ios_total_df.join(
+        mmp_ios_paid_df, on=group_cols, how="left"
+    ).join(skan_total_df, on=group_cols, how="left")
+    for agg_col in agg_cols:
+        mmp_ios_organic_df = mmp_ios_organic_df.withColumn(
+            agg_col,
+            F.expr(
+                f"MMP_TOTAL_{agg_col} - coalesce(MMP_PAID_{agg_col}, 0) - coalesce(SKAN_PAID_{agg_col}, 0)"
+            ),
+        )
+        mmp_ios_organic_df = mmp_ios_organic_df.drop(
+            *[prefix + agg_col for prefix in ["MMP_TOTAL_", "MMP_PAID_", "SKAN_PAID_"]]
+        )
+
+    mmp_ios_organic_df = mmp_ios_organic_df.withColumn(
+        "USER_SOURCE_TYPE_CD", F.lit("US")
+    )
+    mmp_ios_organic_df = mmp_ios_organic_df.withColumn("SOURCE", F.lit("Non-SKAN"))
+    mmp_ios_organic_df = mmp_ios_organic_df.withColumn("CHANNEL_NAME", F.lit("ORGANIC"))
+    mmp_ios_organic_df = mmp_ios_organic_df.withColumn(
+        "PROMOTION_NAME", F.lit("ORGANIC")
+    )
+
+    # concatenate mmp_ios_organic, mmp_non_organic and skan into ios_df
+    ios_campaign_details_df = mmp_ios_organic_df.unionByName(
+        other_campaign_details_df.where(
+            (F.col("MARKET_CD") == "IT") & (F.col("USER_SOURCE_TYPE_CD") != "US")
+        )
+    ).unionByName(skan_campaign_details_df)
+
+    # union ios with go
+    go_campaign_details_df = go_campaign_details_df.withColumn("SOURCE", F.lit("Non-SKAN"))
+    campaign_details_df = ios_campaign_details_df.unionByName(go_campaign_details_df)
+    
+    # deal with negative aggregated values
+    for agg_col in agg_cols:
+        tmp_col = "tmp_"+agg_col
+        campaign_details_df = campaign_details_df.withColumnRenamed(agg_col, tmp_col)
+        campaign_details_df = campaign_details_df.withColumn(agg_col, F.when(F.col(tmp_col) >= 0, F.col(tmp_col)).otherwise(0))
+        campaign_details_df = campaign_details_df.drop(tmp_col)
+
+    return campaign_details_df
+
+
+def get_complete_campaign_details(
+    campaign_details_df: ps.DataFrame, skan_campaign_ltv_df: ps.DataFrame
+) -> ps.DataFrame:
+    """
+    For SKAN campaigns, use SKAN LTV and general spend; For non-SKAN campaigns, use general details. Join on APPLICATION_FAMILY_NAME, MARKET_CD, CHANNEL_NAME, PROMOTION_NAME, CALENDAR_DT
+    """
+    # get skan campaign details
+    campaign_spend_df = campaign_details_df.select(
+        "APPLICATION_FAMILY_NAME",
+        "MARKET_CD",
+        "USER_SOURCE_TYPE_CD",
+        "CHANNEL_NAME",
+        "PROMOTION_NAME",
+        "CALENDAR_DT",
+        "SPEND",
+    )
+    skan_campaign_details_df = skan_campaign_ltv_df.join(
+        campaign_spend_df,
+        on=[
+            "APPLICATION_FAMILY_NAME",
+            "MARKET_CD",
+            "CHANNEL_NAME",
+            "PROMOTION_NAME",
+            "CALENDAR_DT",
+        ],
+        how="left",
+    )
+    skan_campaign_details_df = skan_campaign_details_df.na.fill(
+        {"USER_SOURCE_TYPE_CD": "MK", "SPEND": 0}
+    )
+
+    # get non-skan campaign details
+    other_campaign_details_df = campaign_details_df.join(
+        skan_campaign_details_df,
+        on=[
+            "APPLICATION_FAMILY_NAME",
+            "MARKET_CD",
+            "CHANNEL_NAME",
+            "PROMOTION_NAME",
+            "CALENDAR_DT",
+        ],
+        how="leftanti",
+    )
+    other_campaign_details_df = other_campaign_details_df.withColumn(
+        "SOURCE", F.lit("Non-SKAN")
+    )
+
+    # campaign_details_df = skan_campaign_details_df.unionByName(
+    #     other_campaign_details_df
+    # )
+
+    # adjust ios organics
+    campaign_details_df = adjust_ios_organic(
+        campaign_details_df, skan_campaign_details_df, other_campaign_details_df
+    )
+
+    campaign_details_df = campaign_details_df.withColumnRenamed(
+        "INSTALL_NUM", "INSTALL"
+    )
+    return campaign_details_df
 
 # COMMAND ----------
 
 if ENVIRONMENT == Environment.DEVELOPMENT:
-  campaign_details_df = get_complete_campaign_details(campaign_details_df, skan_campaign_ltv_df)
-  display(campaign_details_df)
+    campaign_details_df = get_complete_campaign_details(
+        campaign_details_df, skan_campaign_ltv_df
+    )
+    display(campaign_details_df)
 
 # COMMAND ----------
 
@@ -535,46 +709,53 @@ if ENVIRONMENT == Environment.DEVELOPMENT:
 
 # COMMAND ----------
 
-def aggregate_campaign_to_channel_details(campaign_details_df: ps.DataFrame) -> ps.DataFrame:
-  """
-  Take a campaign-level detail df and aggregate into channel-level details
-  The input df includes 'APPLICATION_FAMILY_NAME', 'MARKET_CD', 'SOURCE', 'USER_SOURCE_TYPE_CD', 'CHANNEL_NAME', 'CALENDAR_DT', spend, install_num, retention, rev, and ltv
-  """
-  channel_details_df = campaign_details_df.\
-                              groupby('APPLICATION_FAMILY_NAME', 'MARKET_CD', 'SOURCE', 'USER_SOURCE_TYPE_CD', 'CHANNEL_NAME', 'CALENDAR_DT').\
-                              agg(
-                                F.sum('SPEND').alias('SPEND'),
-                                F.sum('INSTALL').alias('INSTALL'),
-                                F.sum('RETENTION_DAY_001_QTY').alias('RETENTION_DAY_001_QTY'),
-                                F.sum('RETENTION_DAY_003_QTY').alias('RETENTION_DAY_003_QTY'),
-                                F.sum('RETENTION_DAY_007_QTY').alias('RETENTION_DAY_007_QTY'),
-                                F.sum('IAP_REVS_DAY_001_AMT').alias('IAP_REVS_DAY_001_AMT'),
-                                F.sum('AD_REVS_DAY_001_AMT').alias('AD_REVS_DAY_001_AMT'),
-                                F.sum('SUB_REVS_DAY_001_AMT').alias('SUB_REVS_DAY_001_AMT'),
-                                F.sum('IAP_REVS_DAY_003_AMT').alias('IAP_REVS_DAY_003_AMT'),
-                                F.sum('AD_REVS_DAY_003_AMT').alias('AD_REVS_DAY_003_AMT'),
-                                F.sum('SUB_REVS_DAY_003_AMT').alias('SUB_REVS_DAY_003_AMT'),
-                                F.sum('IAP_REVS_DAY_007_AMT').alias('IAP_REVS_DAY_007_AMT'),
-                                F.sum('AD_REVS_DAY_007_AMT').alias('AD_REVS_DAY_007_AMT'),
-                                F.sum('SUB_REVS_DAY_007_AMT').alias('SUB_REVS_DAY_007_AMT'),
-                                F.sum('IAP_REVS_DAY_014_AMT').alias('IAP_REVS_DAY_014_AMT'),
-                                F.sum('AD_REVS_DAY_014_AMT').alias('AD_REVS_DAY_014_AMT'),
-                                F.sum('SUB_REVS_DAY_014_AMT').alias('SUB_REVS_DAY_014_AMT'),
-                                F.sum('IAP_REVS_DAY_028_AMT').alias('IAP_REVS_DAY_028_AMT'),
-                                F.sum('AD_REVS_DAY_028_AMT').alias('AD_REVS_DAY_028_AMT'),
-                                F.sum('SUB_REVS_DAY_028_AMT').alias('SUB_REVS_DAY_028_AMT'),
-                                F.sum('IAP_LTV').alias('IAP_LTV'),
-                                F.sum('AD_LTV').alias('AD_LTV'),
-                                F.sum('SUB_LTV').alias('SUB_LTV'),
-                                F.sum('TOTAL_LTV').alias('TOTAL_LTV')
-                              )
-  return channel_details_df
+def aggregate_campaign_to_channel_details(
+    campaign_details_df: ps.DataFrame,
+) -> ps.DataFrame:
+    """
+    Take a campaign-level detail df and aggregate into channel-level details
+    The input df includes 'APPLICATION_FAMILY_NAME', 'MARKET_CD', 'SOURCE', 'USER_SOURCE_TYPE_CD', 'CHANNEL_NAME', 'CALENDAR_DT', spend, install_num, retention, rev, and ltv
+    """
+    channel_details_df = campaign_details_df.groupby(
+        "APPLICATION_FAMILY_NAME",
+        "MARKET_CD",
+        "SOURCE",
+        "USER_SOURCE_TYPE_CD",
+        "CHANNEL_NAME",
+        "CALENDAR_DT",
+    ).agg(
+        F.sum("SPEND").alias("SPEND"),
+        F.sum("INSTALL").alias("INSTALL"),
+        F.sum("RETENTION_DAY_001_QTY").alias("RETENTION_DAY_001_QTY"),
+        F.sum("RETENTION_DAY_003_QTY").alias("RETENTION_DAY_003_QTY"),
+        F.sum("RETENTION_DAY_007_QTY").alias("RETENTION_DAY_007_QTY"),
+        F.sum("IAP_REVS_DAY_001_AMT").alias("IAP_REVS_DAY_001_AMT"),
+        F.sum("AD_REVS_DAY_001_AMT").alias("AD_REVS_DAY_001_AMT"),
+        F.sum("SUB_REVS_DAY_001_AMT").alias("SUB_REVS_DAY_001_AMT"),
+        F.sum("IAP_REVS_DAY_003_AMT").alias("IAP_REVS_DAY_003_AMT"),
+        F.sum("AD_REVS_DAY_003_AMT").alias("AD_REVS_DAY_003_AMT"),
+        F.sum("SUB_REVS_DAY_003_AMT").alias("SUB_REVS_DAY_003_AMT"),
+        F.sum("IAP_REVS_DAY_007_AMT").alias("IAP_REVS_DAY_007_AMT"),
+        F.sum("AD_REVS_DAY_007_AMT").alias("AD_REVS_DAY_007_AMT"),
+        F.sum("SUB_REVS_DAY_007_AMT").alias("SUB_REVS_DAY_007_AMT"),
+        F.sum("IAP_REVS_DAY_014_AMT").alias("IAP_REVS_DAY_014_AMT"),
+        F.sum("AD_REVS_DAY_014_AMT").alias("AD_REVS_DAY_014_AMT"),
+        F.sum("SUB_REVS_DAY_014_AMT").alias("SUB_REVS_DAY_014_AMT"),
+        F.sum("IAP_REVS_DAY_028_AMT").alias("IAP_REVS_DAY_028_AMT"),
+        F.sum("AD_REVS_DAY_028_AMT").alias("AD_REVS_DAY_028_AMT"),
+        F.sum("SUB_REVS_DAY_028_AMT").alias("SUB_REVS_DAY_028_AMT"),
+        F.sum("IAP_LTV").alias("IAP_LTV"),
+        F.sum("AD_LTV").alias("AD_LTV"),
+        F.sum("SUB_LTV").alias("SUB_LTV"),
+        F.sum("TOTAL_LTV").alias("TOTAL_LTV"),
+    )
+    return channel_details_df
 
 # COMMAND ----------
 
 if ENVIRONMENT == Environment.DEVELOPMENT:
-  channel_details_df = aggregate_campaign_to_channel_details(campaign_details_df)
-  display(channel_details_df)
+    channel_details_df = aggregate_campaign_to_channel_details(campaign_details_df)
+    display(channel_details_df)
 
 # COMMAND ----------
 
@@ -584,75 +765,109 @@ if ENVIRONMENT == Environment.DEVELOPMENT:
 # COMMAND ----------
 
 def aggregate_to_game_details(channel_details_df: ps.DataFrame) -> ps.DataFrame:
-  """
-  Aggregate campaign- or channel-level performance into game-level metrics, which includes market_cd, source, last_install_dt, total_spend, total_installs and total_ltv
-  """
-  game_agg_df = channel_details_df.\
-                  groupby('APPLICATION_FAMILY_NAME', 'MARKET_CD', 'SOURCE').\
-                  agg(
-                    F.max('CALENDAR_DT').alias('LAST_INSTALL_DT'),
-                    F.sum('SPEND').alias('TOTAL_SPEND'),
-                    F.sum('INSTALL').alias('TOTAL_INSTALL')
-                  )
-  return game_agg_df
+    """
+    Aggregate campaign- or channel-level performance into game-level metrics, which includes market_cd, source, last_install_dt, total_spend, total_installs and total_ltv
+    """
+    game_agg_df = channel_details_df.groupby(
+        "APPLICATION_FAMILY_NAME", "MARKET_CD", "SOURCE"
+    ).agg(
+        F.max("CALENDAR_DT").alias("LAST_INSTALL_DT"),
+        F.sum("SPEND").alias("TOTAL_SPEND"),
+        F.sum("INSTALL").alias("TOTAL_INSTALL"),
+    )
+    return game_agg_df
+
 
 class PredictionError(Exception):
-  def __init__(self, game, market_cd, source, exist_max_install_dt, exist_total_spend, exist_total_install_num, new_max_install_dt, new_total_spend, new_total_install_num):
-    self.game = game
-    self.market_cd = market_cd
-    self.source = source
-    self.exist_max_install_dt = exist_max_install_dt
-    self.exist_total_spend = exist_total_spend
-    self.exist_total_install_num = exist_total_install_num
-    self.new_max_install_dt = new_max_install_dt
-    self.new_total_spend = new_total_spend
-    self.new_total_install_num = new_total_install_num
-    super().__init__()
+    def __init__(
+        self,
+        game,
+        market_cd,
+        source,
+        exist_max_install_dt,
+        exist_total_spend,
+        exist_total_install_num,
+        new_max_install_dt,
+        new_total_spend,
+        new_total_install_num,
+    ):
+        self.game = game
+        self.market_cd = market_cd
+        self.source = source
+        self.exist_max_install_dt = exist_max_install_dt
+        self.exist_total_spend = exist_total_spend
+        self.exist_total_install_num = exist_total_install_num
+        self.new_max_install_dt = new_max_install_dt
+        self.new_total_spend = new_total_spend
+        self.new_total_install_num = new_total_install_num
+        super().__init__()
 
-  def __str__(self):
-    msg = f"""
+    def __str__(self):
+        msg = f"""
         Prediction error for {self.game} {self.market_cd} {self.source}:
         Before prediction, there are {self.exist_total_install_num} installs up to {datetime.strftime(self.exist_max_install_dt, DATE_FORMAT)} for ${self.exist_total_spend:.2f}.
         After prediction, there are {self.new_total_install_num} installs up to {datetime.strftime(self.new_max_install_dt, DATE_FORMAT)} for ${self.new_total_spend:.2f}.
          """
-    return msg
+        return msg
+
 
 def get_old_channel_details_df() -> ps.DataFrame:
-  sql = f"select * from {CAMPAIGN_TABLE_NAME}"
-  df = spark.sql(sql)
-  return df
-  
+    sql = f"select * from {CAMPAIGN_TABLE_NAME}"
+    df = spark.sql(sql)
+    return df
+
+
 def qa_result_by_game(row: pd.Series) -> None:
-  if (row['NEW_LAST_INSTALL_DT'] < row['OLD_LAST_INSTALL_DT']) or \
-     (row['NEW_TOTAL_INSTALL'] < (row['OLD_TOTAL_INSTALL']-1)):
-    raise PredictionError(row['APPLICATION_FAMILY_NAME'], row['MARKET_CD'], row['SOURCE'], row['OLD_LAST_INSTALL_DT'], row['OLD_TOTAL_SPEND'], row['OLD_TOTAL_INSTALL'], row['NEW_LAST_INSTALL_DT'], row['NEW_TOTAL_SPEND'], row['NEW_TOTAL_INSTALL'])
-    
-def qa_result(old_channel_details_df: ps.DataFrame, new_channel_details_df: ps.DataFrame) -> None:
-  """
-  QA the new merge result. If on any platform, we find a smaller last_install_dt, or a smaller spend, or a smaller install_num, report an error
-  """
-  old_agg_df = aggregate_to_game_details(old_channel_details_df).toPandas()
-  old_agg_df = old_agg_df.rename(columns={
-    'LAST_INSTALL_DT': 'OLD_LAST_INSTALL_DT',
-    'TOTAL_SPEND': 'OLD_TOTAL_SPEND',
-    'TOTAL_INSTALL': 'OLD_TOTAL_INSTALL'
-  })
-  
-  new_agg_df = aggregate_to_game_details(new_channel_details_df).toPandas()
-  new_agg_df = new_agg_df.rename(columns={
-    'LAST_INSTALL_DT': 'NEW_LAST_INSTALL_DT',
-    'TOTAL_SPEND': 'NEW_TOTAL_SPEND',
-    'TOTAL_INSTALL': 'NEW_TOTAL_INSTALL'
-  })
-  
-  comp_agg_df = old_agg_df.merge(new_agg_df, on=['APPLICATION_FAMILY_NAME', 'MARKET_CD', 'SOURCE'], how='inner')
-  comp_agg_df.apply(qa_result_by_game, axis=1)
+    if (row["NEW_LAST_INSTALL_DT"] < row["OLD_LAST_INSTALL_DT"]) or (
+        row["NEW_TOTAL_INSTALL"] < (row["OLD_TOTAL_INSTALL"] - 1)
+    ):
+        raise PredictionError(
+            row["APPLICATION_FAMILY_NAME"],
+            row["MARKET_CD"],
+            row["SOURCE"],
+            row["OLD_LAST_INSTALL_DT"],
+            row["OLD_TOTAL_SPEND"],
+            row["OLD_TOTAL_INSTALL"],
+            row["NEW_LAST_INSTALL_DT"],
+            row["NEW_TOTAL_SPEND"],
+            row["NEW_TOTAL_INSTALL"],
+        )
+
+
+def qa_result(
+    old_channel_details_df: ps.DataFrame, new_channel_details_df: ps.DataFrame
+) -> None:
+    """
+    QA the new merge result. If on any platform, we find a smaller last_install_dt, or a smaller spend, or a smaller install_num, report an error
+    """
+    old_agg_df = aggregate_to_game_details(old_channel_details_df).toPandas()
+    old_agg_df = old_agg_df.rename(
+        columns={
+            "LAST_INSTALL_DT": "OLD_LAST_INSTALL_DT",
+            "TOTAL_SPEND": "OLD_TOTAL_SPEND",
+            "TOTAL_INSTALL": "OLD_TOTAL_INSTALL",
+        }
+    )
+
+    new_agg_df = aggregate_to_game_details(new_channel_details_df).toPandas()
+    new_agg_df = new_agg_df.rename(
+        columns={
+            "LAST_INSTALL_DT": "NEW_LAST_INSTALL_DT",
+            "TOTAL_SPEND": "NEW_TOTAL_SPEND",
+            "TOTAL_INSTALL": "NEW_TOTAL_INSTALL",
+        }
+    )
+
+    comp_agg_df = old_agg_df.merge(
+        new_agg_df, on=["APPLICATION_FAMILY_NAME", "MARKET_CD", "SOURCE"], how="inner"
+    )
+    comp_agg_df.apply(qa_result_by_game, axis=1)
 
 # COMMAND ----------
 
 if ENVIRONMENT == Environment.DEVELOPMENT:
-  old_channel_details_df = get_old_channel_details_df()
-  qa_result(old_channel_details_df, channel_details_df)
+    old_channel_details_df = get_old_channel_details_df()
+    qa_result(old_channel_details_df, channel_details_df)
 
 # COMMAND ----------
 
@@ -662,22 +877,43 @@ if ENVIRONMENT == Environment.DEVELOPMENT:
 # COMMAND ----------
 
 def revise_schema(df: ps.DataFrame) -> ps.DataFrame:
-  """
-  Change certain column names to lower case
-  """
-  columns = ['APPLICATION_FAMILY_NAME', 'MARKET_CD', 'CHANNEL_NAME', 'USER_SOURCE_TYPE_CD', 'PROMOTION_NAME', 'CALENDAR_DT', 'SOURCE', 'INSTALL', 'SPEND']
-  for column in columns:
-    df = df.withColumnRenamed(column, column.lower())
-  return df
+    """
+    Change certain column names to lower case
+    """
+    columns = [
+        "APPLICATION_FAMILY_NAME",
+        "MARKET_CD",
+        "CHANNEL_NAME",
+        "USER_SOURCE_TYPE_CD",
+        "PROMOTION_NAME",
+        "CALENDAR_DT",
+        "SOURCE",
+        "INSTALL",
+        "SPEND",
+    ]
+    for column in columns:
+        df = df.withColumnRenamed(column, column.lower())
+    return df
 
-def save_result(campaign_details_df: ps.DataFrame, channel_details_df: ps.DataFrame) -> None:
-  campaign_details_df = revise_schema(campaign_details_df)
-  campaign_details_df.write.format('parquet').mode('overwrite').partitionBy('APPLICATION_FAMILY_NAME').save(CAMPAIGN_PARQUET_PATH)
-  campaign_details_df.write.mode('overwrite').partitionBy('APPLICATION_FAMILY_NAME').saveAsTable(CAMPAIGN_TABLE_NAME)
-  
-  channel_details_df = revise_schema(channel_details_df)
-  channel_details_df.write.format('parquet').mode('overwrite').partitionBy('APPLICATION_FAMILY_NAME').save(CHANNEL_PARQUET_PATH)
-  channel_details_df.write.mode('overwrite').partitionBy('APPLICATION_FAMILY_NAME').saveAsTable(CHANNEL_TABLE_NAME)
+
+def save_result(
+    campaign_details_df: ps.DataFrame, channel_details_df: ps.DataFrame
+) -> None:
+    campaign_details_df = revise_schema(campaign_details_df)
+    campaign_details_df.write.format("parquet").mode("overwrite").partitionBy(
+        "APPLICATION_FAMILY_NAME"
+    ).save(CAMPAIGN_PARQUET_PATH)
+    campaign_details_df.write.mode("overwrite").partitionBy(
+        "APPLICATION_FAMILY_NAME"
+    ).saveAsTable(CAMPAIGN_TABLE_NAME)
+
+    channel_details_df = revise_schema(channel_details_df)
+    channel_details_df.write.format("parquet").mode("overwrite").partitionBy(
+        "APPLICATION_FAMILY_NAME"
+    ).save(CHANNEL_PARQUET_PATH)
+    channel_details_df.write.mode("overwrite").partitionBy(
+        "APPLICATION_FAMILY_NAME"
+    ).saveAsTable(CHANNEL_TABLE_NAME)
 
 # COMMAND ----------
 
@@ -687,35 +923,39 @@ def save_result(campaign_details_df: ps.DataFrame, channel_details_df: ps.DataFr
 # COMMAND ----------
 
 def merge_skan_performance_channel_details():
-  # get campaign details
-  campaign_without_sub_pltv_df = get_campaign_without_sub_ltv()
-  campaign_sub_pltv_df = get_campaign_sub_ltv()
-  campaign_details_df = get_campaign_details(campaign_without_sub_pltv_df, campaign_sub_pltv_df)
-  
-  # get skan channel details
-  skan_campaign_ltv_df = get_skan_campaign_ltv()
-  
-  # Join SKAN with Non-SKAN to Get Complete LTV Info
-  campaign_details_df = get_complete_campaign_details(campaign_details_df, skan_campaign_ltv_df)
-  
-  # Aggregate campaign_details_df on Channel
-  channel_details_df = aggregate_campaign_to_channel_details(campaign_details_df)
-  
-  # qa
-  old_channel_details_df = get_old_channel_details_df()
-  qa_result(old_channel_details_df, channel_details_df)
-  
-  # save result
-  if SAVE_FLAG:
-    save_result(campaign_details_df, channel_details_df)
-    
-  return campaign_details_df, channel_details_df
+    # get campaign details
+    campaign_without_sub_pltv_df = get_campaign_without_sub_ltv()
+    campaign_sub_pltv_df = get_campaign_sub_ltv()
+    campaign_details_df = get_campaign_details(
+        campaign_without_sub_pltv_df, campaign_sub_pltv_df
+    )
+
+    # get skan channel details
+    skan_campaign_ltv_df = get_skan_campaign_ltv()
+
+    # Join SKAN with Non-SKAN to Get Complete LTV Info
+    campaign_details_df = get_complete_campaign_details(
+        campaign_details_df, skan_campaign_ltv_df
+    )
+
+    # Aggregate campaign_details_df on Channel
+    channel_details_df = aggregate_campaign_to_channel_details(campaign_details_df)
+
+    # qa
+    old_channel_details_df = get_old_channel_details_df()
+    qa_result(old_channel_details_df, channel_details_df)
+
+    # save result
+    if SAVE_FLAG:
+        save_result(campaign_details_df, channel_details_df)
+
+    return campaign_details_df, channel_details_df
 
 # COMMAND ----------
 
 if ENVIRONMENT == Environment.PRODUCTION:
-  campaign_details_df, channel_details_df = merge_skan_performance_channel_details()
-  display(channel_details_df)
+    campaign_details_df, channel_details_df = merge_skan_performance_channel_details()
+    display(channel_details_df)
 
 # COMMAND ----------
 
