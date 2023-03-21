@@ -496,30 +496,15 @@ def get_skan_campaign_ltv() -> ps.DataFrame:
     0 as SUB_REVS_DAY_028_AMT,
     sum(
       case 
-         when APPLICATION_FAMILY_NAME = 'Harry Potter' then LTV_365_LATEST_VAL*0.616
-         when APPLICATION_FAMILY_NAME = 'Jurassic World the Game' then LTV_365_LATEST_VAL*0.525
-         when APPLICATION_FAMILY_NAME = 'DC Heroes & Villains' then LTV_365_LATEST_VAL*0.546
-         else LTV_365_LATEST_VAL*0.7 
+         when APPLICATION_FAMILY_NAME = 'Harry Potter' then GROSS_IAP_LTV_365_LATEST_VAL*0.616
+         when APPLICATION_FAMILY_NAME = 'Jurassic World the Game' then GROSS_IAP_LTV_365_LATEST_VAL*0.525
+         when APPLICATION_FAMILY_NAME = 'DC Heroes & Villains' then GROSS_IAP_LTV_365_LATEST_VAL*0.546
+         else GROSS_IAP_LTV_365_LATEST_VAL*0.7 
       end
     ) as IAP_LTV,
     0 as AD_LTV,
     0 as SUB_LTV,
-    sum(
-      case 
-        when application_family_name = 'Bingo Pop' then LTV_365_LATEST_VAL*0.77
-        when application_family_name = 'Cookie Jam' then LTV_365_LATEST_VAL*0.90
-        when application_family_name = 'Cookie Jam Blast' then LTV_365_LATEST_VAL*1.09
-        when application_family_name = 'Emoji Blitz' then LTV_365_LATEST_VAL*0.95
-        when application_family_name = 'Genies and Gems' then LTV_365_LATEST_VAL*1.20
-        when application_family_name = 'Harry Potter' and channel_name in ('SGNFB','TIKTOK','GOOGLE ADS','SKANUAC','MOLOCO','ADWORDS') then LTV_365_LATEST_VAL*0.85
-        when application_family_name = 'Harry Potter' and channel_name not in ('SGNFB','TIKTOK','GOOGLE ADS','SKANUAC','MOLOCO','ADWORDS') then LTV_365_LATEST_VAL*0.77
-        when application_family_name = 'Jurassic World Alive' then LTV_365_LATEST_VAL*0.91
-        when application_family_name = 'Jurassic World the Game' then LTV_365_LATEST_VAL*0.80
-        when application_family_name = 'Mahjong' then LTV_365_LATEST_VAL*1.28
-        when application_family_name = 'Panda Pop' then LTV_365_LATEST_VAL*1.03 
-        else LTV_365_LATEST_VAL*0.7 
-      end
-    ) as TOTAL_LTV
+    sum(NET_OVERALL_LTV_365_LATEST_VAL) as TOTAL_LTV
   from ua.skan_ltv
   where APPLICATION_FAMILY_NAME in {tuple(GAME_LIST)} and {SKAN_FILTER_COND} and INSTALL_DT >= '{START_DT}' and INSTALL_DT < current_date()
   group by 1, 2, 3, 4, 5, 6
@@ -679,10 +664,6 @@ def get_complete_campaign_details(
     other_campaign_details_df = other_campaign_details_df.withColumn(
         "SOURCE", F.lit("Non-SKAN")
     )
-
-    # campaign_details_df = skan_campaign_details_df.unionByName(
-    #     other_campaign_details_df
-    # )
 
     # adjust ios organics
     campaign_details_df = adjust_ios_organic(
@@ -880,19 +861,18 @@ def revise_schema(df: ps.DataFrame) -> ps.DataFrame:
     """
     Change certain column names to lower case
     """
-    columns = [
-        "APPLICATION_FAMILY_NAME",
-        "MARKET_CD",
-        "CHANNEL_NAME",
-        "USER_SOURCE_TYPE_CD",
-        "PROMOTION_NAME",
-        "CALENDAR_DT",
-        "SOURCE",
-        "INSTALL",
-        "SPEND",
-    ]
-    for column in columns:
-        df = df.withColumnRenamed(column, column.lower())
+    float_columns = (
+        [f"{metric}_REVS_DAY_{day:0>3d}_AMT" for day in [1, 3, 7, 14, 28] for metric in ['IAP', 'AD', 'SUB']] 
+        + [f"{metric}_LTV" for metric in ['IAP', 'AD', 'SUB', 'TOTAL']]
+        + ['SPEND']
+    )
+    for column in float_columns:
+        df = df.withColumn(column, df[column].cast('float'))
+        
+    int_columns = ['INSTALL'] + [f"RETENTION_DAY_{day:0>3d}_QTY" for day in [1, 3, 7]]
+    for column in int_columns:
+        df = df.withColumn(column, df[column].cast('int')) 
+    
     return df
 
 
@@ -956,7 +936,3 @@ def merge_skan_performance_channel_details():
 if ENVIRONMENT == Environment.PRODUCTION:
     campaign_details_df, channel_details_df = merge_skan_performance_channel_details()
     display(channel_details_df)
-
-# COMMAND ----------
-
-
